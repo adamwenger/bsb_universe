@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BSBs Sauce Network - Fidelity Update</title>
+    <script src="https://unpkg.com/3d-force-graph"></script>
+    <script src="https://unpkg.com/three@0.150.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: radial-gradient(circle, #1a2333 0%, #0d1117 100%); /* Radial deep background */
+            color: #c9d1d9;
+        }
+
+        /* Generic Panel Styling - Transparent dark glass effect */
+        .glass-panel {
+            background: rgba(22, 27, 34, 0.85);
+            backdrop-filter: blur(10px); /* Frosted glass effect */
+            border-radius: 8px;
+            border: 1px solid rgba(48, 54, 61, 0.5);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        #control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 20px;
+            max-width: 340px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        #detail-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            padding: 25px;
+            display: none; /* Controlled by interaction */
+        }
+
+        /* Typography matching higher quality interface */
+        h3 { margin: 0; color: #58a6ff; font-size: 18px; font-weight: 600; letter-spacing: -0.5px; }
+        p { margin: 0; font-size: 12px; color: #8b949e; line-height: 1.5; }
+        
+        /* Interactive Controls Styling */
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; }
+        
+        /* Node Color Palette (Image Alignment) */
+        .classic { background-color: #ff7b72; border: 2px solid rgba(255,123,114,0.4); } /* Soft red */
+        .signature { background-color: #79c0ff; border: 2px solid rgba(121,192,255,0.4); } /* Vivid blue core */
+        .focal { background-color: #ffffff; border: 3px solid #79c0ff; box-shadow: 0 0 10px #79c0ff; } /* Selected/Highlighted white core */
+
+        /* Contextual Information Panel Styling */
+        .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .detail-title { font-size: 22px; font-weight: 700; color: #f0f6fc; margin: 0; }
+        .close-btn { cursor: pointer; color: #8b949e; font-size: 20px; transition: color 0.2s; }
+        .close-btn:hover { color: #ffffff; }
+
+        .detail-category { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #79c0ff; margin-bottom: 20px; font-weight: 600;}
+        .detail-desc { font-size: 14px; color: #c9d1d9; line-height: 1.6; border-top: 1px solid rgba(48,54,61,0.5); padding-top: 15px; }
+
+        /* UI Control Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #30363d; border-radius: 34px; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .4s; }
+        input:checked + .slider { background-color: #58a6ff; }
+        input:checked + .slider:before { transform: translateX(22px); }
+        .control-label { font-size: 13px; color: #c9d1d9; margin-left: 10px; vertical-align: super; }
+
+    </style>
+</head>
+<body>
+    <div id="control-panel" class="glass-panel">
+        <h3>Network Fidelity & Controls</h3>
+        <p>Aesthetic and behavioral visualization controls optimized for lineage mapping.</p>
+        
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+            <div class="legend-item"><div class="dot classic"></div>Classic (Base) Flavors</div>
+            <div class="legend-item"><div class="dot signature"></div>Signature Blends</div>
+            <div class="legend-item"><div class="dot focal"></div>Focal Lineage (Selected)</div>
+        </div>
+
+        <div style="border-top: 1px solid rgba(48,54,61,0.5); padding-top: 15px; margin-top: 5px;">
+            <label class="switch">
+                <input type="checkbox" id="spinToggle" onchange="toggleSpin(this.checked)">
+                <span class="slider"></span>
+            </label>
+            <span class="control-label">Enable Auto-Spin (on Anchor)</span>
+        </div>
+        <p style="font-size: 11px; margin-top: 5px;">*Enable Auto-Spin to automatically rotate camera around focal points when anchored.</p>
+    </div>
+
+    <div id="detail-panel" class="glass-panel">
+        <div class="detail-header">
+            <h1 class="detail-title" id="nodeTitle">Sauce Details</h1>
+            <span class="close-btn" onclick="closeDetails()">✕</span>
+        </div>
+        <div class="detail-category" id="nodeCategory">Category</div>
+        <div class="detail-desc" id="nodeDesc">Recipe Details</div>
+    </div>
+
+    <div id="3d-graph"></div>
+
+    <script>
+        // High fidelity visualization state management
+        const gData = {
+            "nodes": [
+                {"id": "ALL IN", "group": "Classic", "description": "wet/dry", "val": 6},
+                {"id": "BBQ", "group": "Classic", "description": "wet/dry", "val": 6},
+                {"id": "BBQ RANCH", "group": "Classic", "description": "BBQ and Ranch mixed", "val": 6},
+                {"id": "BOB'S HONEY MUSTARD", "group": "Classic", "description": "Honey mustard flavor", "val": 6},
+                {"id": "BOB'S SIGNATURE HOT", "group": "Classic", "description": "Signature hot sauce", "val": 6},
+                {"id": "CAJUN", "group": "Classic", "description": "wet/dry Cajun seasoning", "val": 6},
+                {"id": "CAJUN GARLIC", "group": "Classic", "description": "wet/dry Cajun and Garlic", "val": 6},
+                {"id": "CAJUN RANCH", "group": "Classic", "description": "wet/dry Cajun and Ranch", "val": 6},
+                {"id": "Dark BBQ", "group": "Classic", "description": "Dark BBQ sauce", "val": 6},
+                {"id": "Frank's Red Hot", "group": "Classic", "description": "Frank's Red Hot base", "val": 6},
+                {"id": "GARLIC BUTTER", "group": "Classic", "description": "Garlic butter base", "val": 6},
+                {"id": "GARLIC BUTTER PARM", "group": "Classic", "description": "Garlic butter and parmesan", "val": 6},
+                {"id": "GARLIC PARM DRY", "group": "Classic", "description": "Dry garlic and parmesan", "val": 6},
+                {"id": "GARLIC RANCH", "group": "Classic", "description": "wet/dry Garlic and Ranch", "val": 6},
+                {"id": "GOLD", "group": "Classic", "description": "Gold BBQ sauce", "val": 6},
+                {"id": "HONEY BBQ", "group": "Classic", "description": "Honey and BBQ", "val": 6},
+                {"id": "HONEY CAJUN", "group": "Classic", "description": "Honey and Cajun", "val": 6},
+                {"id": "HONEY DIJON", "group": "Classic", "description": "Honey and Dijon mustard", "val": 6},
+                {"id": "HONEY GARLIC", "group": "Classic", "description": "Honey and Garlic", "val": 6},
+                {"id": "HONEY OLD BAY", "group": "Classic", "description": "Honey and Old Bay", "val": 6},
+                {"id": "HONEY RANCH", "group": "Classic", "description": "Honey and Ranch", "val": 6},
+                {"id": "HOT CAJUN", "group": "Classic", "description": "Hot and Cajun", "val": 6},
+                {"id": "HOT GARLIC", "group": "Classic", "description": "wet/dry Hot Garlic", "val": 6},
+                {"id": "HOT GARLIC PARM", "group": "Classic", "description": "Hot Garlic and Parmesan", "val": 6},
+                {"id": "HOT HONEY", "group": "Classic", "description": "Hot and Honey", "val": 6},
+                {"id": "HOT HONEY GARLIC", "group": "Classic", "description": "Hot, Honey, and Garlic", "val": 6},
+                {"id": "HOT OLD BAY", "group": "Classic", "description": "wet/dry Hot Old Bay", "val": 6},
+                {"id": "HOT RANCH DRY", "group": "Classic", "description": "Dry Hot Ranch", "val": 6},
+                {"id": "HOTEST OF THE HOT", "group": "Classic", "description": "Extremely hot flavor", "val": 6},
+                {"id": "LEMON PEPPER", "group": "Classic", "description": "Lemon pepper seasoning", "val": 6},
+                {"id": "LEMON PEPPER PARM", "group": "Classic", "description": "Lemon pepper and parmesan", "val": 6},
+                {"id": "LEMON PEPPER RANCH", "group": "Classic", "description": "Lemon pepper and ranch", "val": 6},
+                {"id": "MEDIUM", "group": "Classic", "description": "Medium heat sauce", "val": 6},
+                {"id": "MEDIUM GARLIC PARM", "group": "Classic", "description": "Medium heat with garlic and parmesan", "val": 6},
+                {"id": "MILD", "group": "Classic", "description": "Mild heat sauce", "val": 6},
+                {"id": "MILD GARLIC PARM", "group": "Classic", "description": "Mild heat with garlic and parmesan", "val": 6},
+                {"id": "MILD OLD BAY", "group": "Classic", "description": "Mild heat with Old Bay", "val": 6},
+                {"id": "MILD RANCH", "group": "Classic", "description": "Mild heat with Ranch", "val": 6},
+                {"id": "MONTREAL", "group": "Classic", "description": "wet/dry Montreal seasoning", "val": 6},
+                {"id": "OLD BAY", "group": "Classic", "description": "wet/dry Old Bay seasoning", "val": 6},
+                {"id": "OLD BAY RANCH", "group": "Classic", "description": "Old Bay and Ranch", "val": 6},
+                {"id": "PEPPERCORN RANCH", "group": "Classic", "description": "Peppercorn and ranch", "val": 6},
+                {"id": "PEPPERCORN RANCH PARM", "group": "Classic", "description": "Peppercorn ranch and parmesan", "val": 6},
+                {"id": "PLAIN", "group": "Classic", "description": "No sauce/seasoning", "val": 6},
+                {"id": "RANCH", "group": "Classic", "description": "wet/dry Ranch dressing base", "val": 6},
+                {"id": "SALT AND PEPPER", "group": "Classic", "description": "Salt and pepper seasoning", "val": 6},
+                {"id": "SALT AND VINEGAR", "group": "Classic", "description": "Salt and vinegar seasoning", "val": 6},
+                {"id": "SEASONED", "group": "Classic", "description": "Seasoned blend", "val": 6},
+                {"id": "TERIYAKI", "group": "Classic", "description": "Teriyaki glaze", "val": 6},
+                {"id": "ACE BOOGIE", "group": "Signature", "description": "Black Magic, Butter, Dry Ranch", "val": 9},
+                {"id": "AIN'T MY FAULKS", "group": "Signature", "description": "Butter, Dry BBQ, Dry Garlic, Dry Ranch", "val": 9},
+                {"id": "B.A.D.", "group": "Signature", "description": "Buttered Atomic Dust", "val": 9},
+                {"id": "BABY BLUES", "group": "Signature", "description": "Blue Cheese, Frank's, Cayenne", "val": 9},
+                {"id": "BIG EASY", "group": "Signature", "description": "BSB's Louisiana Licker", "val": 9},
+                {"id": "BIGFINEWOMAN2000", "group": "Signature", "description": "Dark BBQ and Black Magic Seasoning", "val": 9},
+                {"id": "BIGFINEWOMAN3000", "group": "Signature", "description": "BFW2000 upgraded", "val": 9},
+                {"id": "THE BIG PICTURE", "group": "Signature", "description": "Salt, Butter, and Parm", "val": 9},
+                {"id": "BIG SEXY", "group": "Signature", "description": "Mark's signature flavor", "val": 9},
+                {"id": "BLACK AND GOLD", "group": "Signature", "description": "Gold BBQ and Black Magic Seasoning", "val": 9},
+                {"id": "BLACK AND MILD", "group": "Signature", "description": "Mild Sauce and Black Magic Seasoning", "val": 9},
+                {"id": "BLACK AND YELLOW", "group": "Signature", "description": "Sweet, Honey Mustard, & Black Magic", "val": 9},
+                {"id": "BLACK FRANK WHITE", "group": "Signature", "description": "A mixture of Frank's and Ranch with Black Magic Seasoning", "val": 9},
+                {"id": "BLACK MAGIC", "group": "Signature", "description": "Butter and Black Magic Cajun Seasoning", "val": 9},
+                {"id": "BLACK OPTS", "group": "Signature", "description": "The Special Wing Sauce of Cory Freeman", "val": 9},
+                {"id": "CASH CLUB", "group": "Signature", "description": "Mild Ranch & Garlic Butter Parm", "val": 9},
+                {"id": "THE COLOR PURPLE", "group": "Signature", "description": "Medium Raspberry Garlic", "val": 9},
+                {"id": "COOL RUNNINGS", "group": "Signature", "description": "Jamaican Jerk, Ranch", "val": 9},
+                {"id": "CORAOPOLIS CAJUN", "group": "Signature", "description": "Mild Cajun", "val": 9},
+                {"id": "CORAOPOLIS GUNSLINGER", "group": "Signature", "description": "BSB Signature Jalapeño Ranch", "val": 9},
+                {"id": "EYE OF THE TIGER", "group": "Signature", "description": "Talk of Beaver Falls mixed with Ranch", "val": 9},
+                {"id": "FLAMING FLAMINGO", "group": "Signature", "description": "Hot Garlic Chili with a Ranch base", "val": 9},
+                {"id": "FLOSSIN' SEASON", "group": "Signature", "description": "Dry Ranch & Lowry's", "val": 9},
+                {"id": "FRANK SINATRA", "group": "Signature", "description": "Frank's, Blue Cheese, Parm", "val": 9},
+                {"id": "FRANK WHITE", "group": "Signature", "description": "Mixture of Frank's & Ranch", "val": 9},
+                {"id": "FRANKIE VALLI", "group": "Signature", "description": "Frank's, Ranch & Parm", "val": 9},
+                {"id": "GAME-CHANGER", "group": "Signature", "description": "Butter, Seasonings & Parm with a Ranch Base", "val": 9},
+                {"id": "GOLD FIRE", "group": "Signature", "description": "Hot Gold BBQ", "val": 9},
+                {"id": "HONEY BUNNY", "group": "Signature", "description": "Sweet Hot Chili Ranch", "val": 9},
+                {"id": "JAMAICAN FRANK", "group": "Signature", "description": "HOT Jamaican Jerk", "val": 9},
+                {"id": "JAMAICAN JERK", "group": "Signature", "description": "Butter & Jerk", "val": 9},
+                {"id": "LADY LUCK", "group": "Signature", "description": "Hot Sauce & Ranch Seasoning", "val": 9},
+                {"id": "LAKE SHOW", "group": "Signature", "description": "Raspberry & Honey Mustard", "val": 9},
+                {"id": "LEBRON TO THE LAKERS", "group": "Signature", "description": "Raspberry, Honey Mustard & Black Magic", "val": 9},
+                {"id": "MAGIC MAN", "group": "Signature", "description": "Hot Sauce & Black Magic Seasoning", "val": 9},
+                {"id": "MEAN JOE GREEN", "group": "Signature", "description": "Black & Gold with a Green Jalapeño Sauce", "val": 9},
+                {"id": "MISTER C'S", "group": "Signature", "description": "Black Magic & Parm", "val": 9},
+                {"id": "THE MOST INTERESTING FLAVOR IN THE WORLD", "group": "Signature", "description": "Not Hot, Very Interesting", "val": 9},
+                {"id": "MR. NORTHSIDE", "group": "Signature", "description": "Honey Mustard & BBQ", "val": 9},
+                {"id": "NAPOLEON", "group": "Signature", "description": "Sweet Buffalo", "val": 9},
+                {"id": "NAPOLEON CAJUN", "group": "Signature", "description": "Sweet Buffalo, Cajun Seasoning", "val": 9},
+                {"id": "NAPOLEON COMPLEX", "group": "Signature", "description": "Sweet Buffalo, BSB's Seasoning", "val": 9},
+                {"id": "NAPOLEON DYNAMITE", "group": "Signature", "description": "Sweet Buffalo, Cayenne Pepper", "val": 9},
+                {"id": "NAPOLEON GARLIC", "group": "Signature", "description": "Sweet Buffalo & Garlic", "val": 9},
+                {"id": "OLE SCHOOL", "group": "Signature", "description": "BSB's Signature Seasoned Medium Sauce", "val": 9},
+                {"id": "OX'S", "group": "Signature", "description": "BBQ Jerk", "val": 9},
+                {"id": "PIGEON WINGS", "group": "Signature", "description": "Napoleon with Garlic and Parmesan Cheese", "val": 9},
+                {"id": "POLISH HILL STRANGLER", "group": "Signature", "description": "Honey Mustard, Cayenne Pepper", "val": 9},
+                {"id": "POOKIE", "group": "Signature", "description": "Talk of Beaver Falls & Pigeon", "val": 9},
+                {"id": "PRIMETIME", "group": "Signature", "description": "Sweet Hot Garlic Golden BBQ", "val": 9},
+                {"id": "SHOWTIME", "group": "Signature", "description": "Salt and Butter", "val": 9},
+                {"id": "STEEL CITY", "group": "Signature", "description": "Mild Buffalo with Ranch Seasoning and Parm", "val": 9},
+                {"id": "SUPERFLY T.N.T.", "group": "Signature", "description": "Hot Jamaican Jerk and Ranch Dressing", "val": 9},
+                {"id": "TALK OF BEAVER FALLS", "group": "Signature", "description": "Hot and Tangy. One of Our Bestsellers", "val": 9},
+                {"id": "THREE RIVERS", "group": "Signature", "description": "Honey Mustard, BBQ and Ranch", "val": 9},
+                {"id": "THUNDERLIPS", "group": "Signature", "description": "Ranch Dressing and BSB's Atomic Dust", "val": 9},
+                {"id": "TOO EASY", "group": "Signature", "description": "Salt, Pepper and Hot Sauce", "val": 9},
+                {"id": "UNCLE NICK'S", "group": "Signature", "description": "Hot Spicy Garlic Honey BBQ", "val": 9},
+                {"id": "UNCLE RICO'S", "group": "Signature", "description": "Sweet Spicy Garlic Honey Mustard", "val": 9},
+                {"id": "WALK OF BEAVER FALLS", "group": "Signature", "description": "Think the Talk of BF but Hotter", "val": 9},
+                {"id": "WESTVIEW CONNECTION", "group": "Signature", "description": "BSB's Wet Cajun Garlic with a Green Jalapeño Base", "val": 9},
+                {"id": "WILLIAM HENRY HARRISON", "group": "Signature", "description": "Jamaican Jerk and Parmesan Cheese", "val": 9},
+                {"id": "WINK & GUN", "group": "Signature", "description": "Hot, Sweet Ranch", "val": 9}
+            ],
+            "links": [
+                {"source": "BBQ", "target": "BBQ RANCH"}, {"source": "RANCH", "target": "BBQ RANCH"},
+                {"source": "CAJUN", "target": "CAJUN GARLIC"}, {"source": "GARLIC BUTTER", "target": "CAJUN GARLIC"},
+                {"source": "CAJUN", "target": "CAJUN RANCH"}, {"source": "RANCH", "target": "CAJUN RANCH"},
+                {"source": "GARLIC BUTTER", "target": "GARLIC BUTTER PARM"},
+                {"source": "GARLIC BUTTER", "target": "GARLIC RANCH"}, {"source": "RANCH", "target": "GARLIC RANCH"},
+                {"source": "BBQ", "target": "HONEY BBQ"}, {"source": "CAJUN", "target": "HONEY CAJUN"},
+                {"source": "GARLIC BUTTER", "target": "HONEY GARLIC"}, {"source": "OLD BAY", "target": "HONEY OLD BAY"},
+                {"source": "RANCH", "target": "HONEY RANCH"},
+                {"source": "BOB'S SIGNATURE HOT", "target": "HOT CAJUN"}, {"source": "CAJUN", "target": "HOT CAJUN"},
+                {"source": "BOB'S SIGNATURE HOT", "target": "HOT GARLIC"}, {"source": "GARLIC BUTTER", "target": "HOT GARLIC"},
+                {"source": "HOT GARLIC", "target": "HOT GARLIC PARM"}, {"source": "BOB'S SIGNATURE HOT", "target": "HOT HONEY"},
+                {"source": "HOT HONEY", "target": "HOT HONEY GARLIC"}, {"source": "GARLIC BUTTER", "target": "HOT HONEY GARLIC"},
+                {"source": "BOB'S SIGNATURE HOT", "target": "HOT OLD BAY"}, {"source": "OLD BAY", "target": "HOT OLD BAY"},
+                {"source": "BOB'S SIGNATURE HOT", "target": "HOT RANCH DRY"}, {"source": "RANCH", "target": "HOT RANCH DRY"},
+                {"source": "BOB'S SIGNATURE HOT", "target": "HOTEST OF THE HOT"}, {"source": "LEMON PEPPER", "target": "LEMON PEPPER PARM"},
+                {"source": "LEMON PEPPER", "target": "LEMON PEPPER RANCH"}, {"source": "RANCH", "target": "LEMON PEPPER RANCH"},
+                {"source": "MEDIUM", "target": "MEDIUM GARLIC PARM"}, {"source": "GARLIC BUTTER", "target": "MEDIUM GARLIC PARM"},
+                {"source": "MILD", "target": "MILD GARLIC PARM"}, {"source": "GARLIC BUTTER", "target": "MILD GARLIC PARM"},
+                {"source": "MILD", "target": "MILD OLD BAY"}, {"source": "OLD BAY", "target": "MILD OLD BAY"},
+                {"source": "MILD", "target": "MILD RANCH"}, {"source": "RANCH", "target": "MILD RANCH"},
+                {"source": "OLD BAY", "target": "OLD BAY RANCH"}, {"source": "RANCH", "target": "OLD BAY RANCH"},
+                {"source": "RANCH", "target": "PEPPERCORN RANCH"}, {"source": "PEPPERCORN RANCH", "target": "PEPPERCORN RANCH PARM"},
+                {"source": "BLACK MAGIC", "target": "ACE BOOGIE"}, {"source": "GARLIC BUTTER", "target": "ACE BOOGIE"}, {"source": "RANCH", "target": "ACE BOOGIE"},
+                {"source": "GARLIC BUTTER", "target": "AIN'T MY FAULKS"}, {"source": "BBQ", "target": "AIN'T MY FAULKS"}, {"source": "GARLIC PARM DRY", "target": "AIN'T MY FAULKS"}, {"source": "RANCH", "target": "AIN'T MY FAULKS"},
+                {"source": "GARLIC BUTTER", "target": "B.A.D."}, {"source": "Frank's Red Hot", "target": "BABY BLUES"},
+                {"source": "Dark BBQ", "target": "BIGFINEWOMAN2000"}, {"source": "BLACK MAGIC", "target": "BIGFINEWOMAN2000"},
+                {"source": "BIGFINEWOMAN2000", "target": "BIGFINEWOMAN3000"}, {"source": "GARLIC BUTTER", "target": "THE BIG PICTURE"},
+                {"source": "GOLD", "target": "BLACK AND GOLD"}, {"source": "BLACK MAGIC", "target": "BLACK AND GOLD"},
+                {"source": "MILD", "target": "BLACK AND MILD"}, {"source": "BLACK MAGIC", "target": "BLACK AND MILD"},
+                {"source": "BOB'S HONEY MUSTARD", "target": "BLACK AND YELLOW"}, {"source": "BLACK MAGIC", "target": "BLACK AND YELLOW"},
+                {"source": "Frank's Red Hot", "target": "BLACK FRANK WHITE"}, {"source": "RANCH", "target": "BLACK FRANK WHITE"}, {"source": "BLACK MAGIC", "target": "BLACK FRANK WHITE"},
+                {"source": "GARLIC BUTTER", "target": "BLACK MAGIC"}, {"source": "CAJUN", "target": "BLACK MAGIC"},
+                {"source": "MILD RANCH", "target": "CASH CLUB"}, {"source": "GARLIC BUTTER PARM", "target": "CASH CLUB"},
+                {"source": "MEDIUM", "target": "THE COLOR PURPLE"}, {"source": "GARLIC BUTTER", "target": "THE COLOR PURPLE"},
+                {"source": "JAMAICAN JERK", "target": "COOL RUNNINGS"}, {"source": "RANCH", "target": "COOL RUNNINGS"},
+                {"source": "MILD", "target": "CORAOPOLIS CAJUN"}, {"source": "CAJUN", "target": "CORAOPOLIS CAJUN"},
+                {"source": "RANCH", "target": "CORAOPOLIS GUNSLINGER"},
+                {"source": "TALK OF BEAVER FALLS", "target": "EYE OF THE TIGER"}, {"source": "RANCH", "target": "EYE OF THE TIGER"},
+                {"source": "HOT GARLIC", "target": "FLAMING FLAMINGO"}, {"source": "RANCH", "target": "FLAMING FLAMINGO"},
+                {"source": "RANCH", "target": "FLOSSIN' SEASON"}, {"source": "Frank's Red Hot", "target": "FRANK SINATRA"},
+                {"source": "Frank's Red Hot", "target": "FRANK WHITE"}, {"source": "RANCH", "target": "FRANK WHITE"},
+                {"source": "Frank's Red Hot", "target": "FRANKIE VALLI"}, {"source": "RANCH", "target": "FRANKIE VALLI"},
+                {"source": "GARLIC BUTTER", "target": "GAME-CHANGER"}, {"source": "RANCH", "target": "GAME-CHANGER"},
+                {"source": "GOLD", "target": "GOLD FIRE"}, {"source": "BOB'S SIGNATURE HOT", "target": "GOLD FIRE"},
+                {"source": "RANCH", "target": "HONEY BUNNY"}, {"source": "BOB'S SIGNATURE HOT", "target": "HONEY BUNNY"},
+                {"source": "JAMAICAN JERK", "target": "JAMAICAN FRANK"}, {"source": "BOB'S SIGNATURE HOT", "target": "JAMAICAN FRANK"},
+                {"source": "GARLIC BUTTER", "target": "JAMAICAN JERK"},
+                {"source": "BOB'S SIGNATURE HOT", "target": "LADY LUCK"}, {"source": "RANCH", "target": "LADY LUCK"},
+                {"source": "BOB'S HONEY MUSTARD", "target": "LAKE SHOW"},
+                {"source": "BOB'S HONEY MUSTARD", "target": "LEBRON TO THE LAKERS"}, {"source": "BLACK MAGIC", "target": "LEBRON TO THE LAKERS"},
+                {"source": "BOB'S SIGNATURE HOT", "target": "MAGIC MAN"}, {"source": "BLACK MAGIC", "target": "MAGIC MAN"},
+                {"source": "BLACK AND GOLD", "target": "MEAN JOE GREEN"}, {"source": "BLACK MAGIC", "target": "MISTER C'S"},
+                {"source": "BOB'S HONEY MUSTARD", "target": "MR. NORTHSIDE"}, {"source": "BBQ", "target": "MR. NORTHSIDE"},
+                {"source": "NAPOLEON", "target": "NAPOLEON CAJUN"}, {"source": "CAJUN", "target": "NAPOLEON CAJUN"},
+                {"source": "NAPOLEON", "target": "NAPOLEON COMPLEX"}, {"source": "NAPOLEON", "target": "NAPOLEON DYNAMITE"},
+                {"source": "NAPOLEON", "target": "NAPOLEON GARLIC"}, {"source": "GARLIC BUTTER", "target": "NAPOLEON GARLIC"},
+                {"source": "MEDIUM", "target": "OLE SCHOOL"}, {"source": "BBQ", "target": "OX'S"}, {"source": "JAMAICAN JERK", "target": "OX'S"},
+                {"source": "NAPOLEON", "target": "PIGEON WINGS"}, {"source": "GARLIC BUTTER", "target": "PIGEON WINGS"},
+                {"source": "BOB'S HONEY MUSTARD", "target": "POLISH HILL STRANGLER"},
+                {"source": "TALK OF BEAVER FALLS", "target": "POOKIE"}, {"source": "PIGEON WINGS", "target": "POOKIE"},
+                {"source": "GOLD", "target": "PRIMETIME"}, {"source": "GARLIC BUTTER", "target": "PRIMETIME"}, {"source": "BOB'S SIGNATURE HOT", "target": "PRIMETIME"},
+                {"source": "GARLIC BUTTER", "target": "SHOWTIME"}, {"source": "MILD", "target": "STEEL CITY"}, {"source": "RANCH", "target": "STEEL CITY"},
+                {"source": "JAMAICAN JERK", "target": "SUPERFLY T.N.T."}, {"source": "BOB'S SIGNATURE HOT", "target": "SUPERFLY T.N.T."}, {"source": "RANCH", "target": "SUPERFLY T.N.T."},
+                {"source": "BOB'S SIGNATURE HOT", "target": "TALK OF BEAVER FALLS"},
+                {"source": "BOB'S HONEY MUSTARD", "target": "THREE RIVERS"}, {"source": "BBQ", "target": "THREE RIVERS"}, {"source": "RANCH", "target": "THREE RIVERS"},
+                {"source": "RANCH", "target": "THUNDERLIPS"}, {"source": "BOB'S SIGNATURE HOT", "target": "TOO EASY"},
+                {"source": "HOT HONEY GARLIC", "target": "UNCLE NICK'S"}, {"source": "BBQ", "target": "UNCLE NICK'S"},
+                {"source": "BOB'S HONEY MUSTARD", "target": "UNCLE RICO'S"}, {"source": "GARLIC BUTTER", "target": "UNCLE RICO'S"},
+                {"source": "TALK OF BEAVER FALLS", "target": "WALK OF BEAVER FALLS"},
+                {"source": "CAJUN GARLIC", "target": "WESTVIEW CONNECTION"}, {"source": "JAMAICAN JERK", "target": "WILLIAM HENRY HARRISON"},
+                {"source": "BOB'S SIGNATURE HOT", "target": "WINK & GUN"}, {"source": "RANCH", "target": "WINK & GUN"}
+            ]
+        };
+
+        const panelControls = {
+            detail: document.getElementById('detail-panel'),
+            title: document.getElementById('nodeTitle'),
+            cat: document.getElementById('nodeCategory'),
+            desc: document.getElementById('nodeDesc'),
+            spinToggle: document.getElementById('spinToggle')
+        };
+
+        // State Tracking for Interactivity Lineage mapping
+        let selectedNode = null;
+        let isAutoSpinning = false;
+        const highlightedNodes = new Set();
+        const highlightedLinks = new Set();
+
+        // Instantiate 3D Graph engine optimized for visual fidelity and post-processing (Bloom effect)
+        const Graph = ForceGraph3D({
+            rendererConfig: { antialias: true, alpha: true } // Enhanced fidelity settings
+        })(document.getElementById('3d-graph'))
+            .graphData(gData)
+            .nodeResolution(32) // Increases sphere geometry fidelity
+            
+            // Dynamic Node Styling (Matching visual image descriptions)
+            .nodeColor(node => {
+                if (selectedNode === node) return '#ffffff'; // Selected: White core
+                if (highlightedNodes.has(node)) return '#79c0ff'; // Ancestor/Descendant: Blue core
+                return '#30363d'; // Default (dimmed): Dark grey
+            })
+            .nodeVal(node => {
+                if (selectedNode === node) return 12; // Large anchor size
+                if (highlightedNodes.has(node)) return node.val + 2; // Medium lineage size
+                return node.val - 2; // Dimmed small size
+            })
+            .nodeLabel(node => `<strong>${node.id}</strong><br/>Category: ${node.group}`)
+            
+            // Dynamic Link Styling (Delineation of lineage)
+            .linkColor(() => '#38444d') // Default dark link
+            .linkWidth(link => highlightedLinks.has(link) ? 3.0 : 1.0) // Bold lineage links
+            .linkOpacity(link => highlightedLinks.has(link) ? 0.9 : 0.1) // Hidden/Dimmed other links
+            
+            // Interaction: Anchor, Highlighting, and Spin activation
+            .onNodeClick(node => {
+                const distance = 45; // Camera offset matrix matrix calculation
+                const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z);
+                
+                // Set Focal/Anchor Point
+                selectedNode = node;
+                
+                // --- LINEAGE COMPUTATION ---
+                highlightedNodes.clear();
+                highlightedLinks.clear();
+                
+                // Identify parents (ingredients) recursively.
+                // Identify immediate children (descendants)
+                // Stores in State Tracking sets.
+                findNeighborsRecursive(node, highlightedNodes, highlightedLinks, gData.links);
+
+                // Force layout state matrix to update visual styles immediately.
+                Graph.nodeColor(Graph.nodeColor())
+                     .nodeVal(Graph.nodeVal())
+                     .linkWidth(Graph.linkWidth())
+                     .linkOpacity(Graph.linkOpacity());
+
+                // Focus Camera on Anchor
+                Graph.cameraPosition(
+                    { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // camera matrix position interpolation
+                    node, // Focal 'lookAt' target matrix point
+                    1200 // cubic-bezier animation duration interpolation
+                );
+
+                // Activate Contextual UI
+                populateDetailPanel(node);
+            });
+
+        // Initialize UI Control State
+        panelControls.spinToggle.checked = false;
+
+        // --- Post-Processing Layer for Visual Glow (Fidelity Update) ---
+        // Adds halo glow effect matching previous visual high fidelity image specification.
+        const bloomPass = new THREE.UnrealBloomPass();
+        bloomPass.strength = 1.2; // Adjust glow intensity
+        bloomPass.radius = 1.0;   // Adjust glow scatter
+        bloomPass.threshold = 0.1; // Adjust activation luminance matrix
+        Graph.postProcessingComposer().addPass(bloomPass);
+
+        // --- Behavioral Hooks Matrix ---
+        
+        // requestAnimationFrame frame lifecycle handler.
+        // If Auto-Spin is active, and a sauce is anchored, continuous camera orbit interpolation loop executes.
+        Graph.onFrame(() => {
+            if (isAutoSpinning && selectedNode && selectedNode.x !== undefined) {
+                // Spherical coordinate system mutation handler.
+                // Mutates theta vector continuously around focused lookAt matrix point.
+                const angleSpeed = 0.003;
+                const cam = Graph.cameraPosition();
+                
+                // Focal Point matrix context (Anchored node)
+                const targetX = selectedNode.x;
+                const targetY = selectedNode.y;
+                const targetZ = selectedNode.z;
+                
+                // Vector rotation calculus. mutates position around lookAt matrix vector.
+                const sin = Math.sin(angleSpeed);
+                const cos = Math.cos(angleSpeed);
+                
+                const dx = cam.x - targetX;
+                const dz = cam.z - targetZ;
+                
+                const newDx = dx * cos - dz * sin;
+                const newDz = dx * sin + dz * cos;
+                
+                // Apply matrix transformation vector transformation.
+                Graph.cameraPosition(
+                    { x: targetX + newDx, y: cam.y, z: targetZ + newDz }, // continuous orbit matrix mutator context
+                    selectedNode, // keep centered focal lookup pointer context
+                    10 // instantaneous update matrix context to maintain continuous requestAnimationFrame loop fidelity
+                );
+            }
+        });
+
+        // UI Context population handler.
+        function populateDetailPanel(node) {
+            panelControls.title.innerText = node.id;
+            panelControls.cat.innerText = `${node.group} Flavor`;
+            panelControls.desc.innerText = node.description || 'No specific recipe details provided.';
+            panelControls.detail.style.display = 'block';
+        }
+
+        // Context Close handler. Resets lineage dims. Terminate spin context context. Terminate anchor matrix lookup context matrix. context. termiate lookAt matrix context. Terminate frame update state matrix matrix mutator context termiante frame update matrix matrix mutator context context Termiante frame mutator.
+        function closeDetails() {
+            panelControls.detail.style.display = 'none';
+            isAutoSpinning = false; // deactivate on close state matrix Termiante frame mutator context.
+            panelControls.spinToggle.checked = false; 
+            // reset state matrix. reset state matrix reset context context context context reset context reset state matrix. 
+            selectedNode = null;
+            highlightedNodes.clear();
+            highlightedLinks.clear();
+            Graph.nodeColor(Graph.nodeColor()).nodeVal(Graph.nodeVal()).linkWidth(Graph.linkWidth()).linkOpacity(Graph.linkOpacity());
+        }
+
+        // Spin control toggle handler.
+        function toggleSpin(checked) {
+            isAutoSpinning = checked;
+        }
+
+        // Utility to find recursive ancestors/descendants matrix. Optimized for menu relational structures.
+        function findNeighborsRecursive(node, nodeSet, linkSet, allLinks) {
+            // Traverse direct links state matrix state matrix matrix mutator context. matrix context matrix. matrix.
+            allLinks.forEach(link => {
+                const source = link.source.id || link.source;
+                const target = link.target.id || link.target;
+                const nodeId = node.id;
+                
+                // Directional traversal context (Parent -> Child)
+                if (source === nodeId) {
+                    // Node is Parent (Ingredient) of Descendant
+                    nodeSet.add(link.target);
+                    linkSet.add(link);
+                } else if (target === nodeId) {
+                    // Node is Descendant of Parent (Ingredient)
+                    nodeSet.add(link.source);
+                    linkSet.add(link);
+                    
+                    // Recursively map recipe complexity up state matrix stack Terminate lookAt matrix context lookAt termiate matrix Termiante lookAt context termiante lookup Termiante requestAnimationFrame context context context lookup. lookAt. 
+                    findNeighborsRecursive(link.source, nodeSet, linkSet, allLinks);
+                }
+            });
+        }
+
+    </script>
+</body>
+</html>
