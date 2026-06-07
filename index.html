@@ -3,143 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BSBs Indented Lineage Tree</title>
+    <title>BSBs Indented Lineage Tree - Favorites Patch</title>
     <style>
         body {
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f8fafc;
-            color: #0f172a;
+            background-color: #f8fafc; color: #0f172a;
             -webkit-tap-highlight-color: transparent;
         }
 
         .header {
-            position: sticky;
-            top: 0;
+            position: sticky; top: 0;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(8px);
-            padding: 16px;
-            border-bottom: 1px solid #e2e8f0;
-            z-index: 100;
+            padding: 16px; border-bottom: 1px solid #e2e8f0; z-index: 100;
         }
 
         h1 { margin: 0 0 12px 0; font-size: 20px; font-weight: 800; }
 
+        .controls { display: flex; gap: 8px; }
+
         .search-box {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            font-size: 16px;
-            box-sizing: border-box;
-            outline: none;
-            background: #ffffff;
+            flex-grow: 1; padding: 12px;
+            border: 1px solid #cbd5e1; border-radius: 8px;
+            font-size: 16px; outline: none; background: #ffffff;
         }
         .search-box:focus { border-color: #3b82f6; }
 
-        .tree-container {
-            padding: 12px;
-            padding-bottom: 100px;
+        .fav-filter-btn {
+            background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px;
+            padding: 0 16px; font-size: 20px; color: #cbd5e1; cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; justify-content: center;
         }
+        .fav-filter-btn.active { border-color: #f59e0b; color: #f59e0b; background: #fef3c7; }
 
-        .node-item {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
+        .tree-container { padding: 12px; padding-bottom: 100px; }
+        .node-item { list-style: none; margin: 0; padding: 0; }
 
         .node-content {
-            display: flex;
-            align-items: center;
-            padding: 14px 12px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            margin-bottom: 6px;
-            cursor: pointer;
-            position: relative;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-            min-height: 44px;
+            display: flex; align-items: center; padding: 14px 12px;
+            background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;
+            margin-bottom: 6px; cursor: pointer; position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02); min-height: 44px;
         }
-
         .node-content:active { background: #f1f5f9; }
 
         .indent-line {
-            position: absolute;
-            left: -14px;
-            top: -6px;
-            bottom: 22px;
-            width: 2px;
-            background-color: #cbd5e1;
-            display: none;
+            position: absolute; left: -14px; top: -6px; bottom: 22px;
+            width: 2px; background-color: #cbd5e1; display: none;
         }
 
-        .node-children {
-            padding-left: 24px;
-            display: none;
-            position: relative;
-        }
-
+        .node-children { padding-left: 24px; display: none; position: relative; }
         .node-children.expanded { display: block; }
         .node-children.expanded > .indent-line { display: block; }
 
         .chevron {
-            width: 20px;
-            height: 20px;
-            margin-right: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #94a3b8;
-            transition: transform 0.2s;
+            width: 20px; height: 20px; margin-right: 12px;
+            display: flex; align-items: center; justify-content: center;
+            color: #94a3b8; transition: transform 0.2s;
         }
         .chevron.rotated { transform: rotate(90deg); }
         .chevron.empty { visibility: hidden; }
 
-        .node-title { font-size: 15px; font-weight: 700; flex-grow: 1; }
+        .text-container { display: flex; flex-direction: column; flex-grow: 1; }
+        .node-title { font-size: 15px; font-weight: 700; }
         
         .badge {
-            font-size: 10px;
-            text-transform: uppercase;
-            padding: 4px 6px;
-            border-radius: 4px;
-            font-weight: 700;
-            margin-left: 8px;
-            white-space: nowrap;
+            font-size: 10px; text-transform: uppercase; padding: 4px 6px;
+            border-radius: 4px; font-weight: 700; margin-left: 8px; white-space: nowrap;
         }
         .badge.classic { background: #f1f5f9; color: #475569; }
         .badge.signature { background: #eff6ff; color: #2563eb; }
         .badge.ingredient { background: #fef2f2; color: #dc2626; }
 
-        .node-desc {
-            display: block;
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 4px;
-            font-weight: 400;
-        }
+        .node-desc { display: block; font-size: 12px; color: #64748b; margin-top: 4px; }
 
-        .text-container { display: flex; flex-direction: column; }
-        
-        .no-results {
-            padding: 24px;
-            text-align: center;
-            color: #64748b;
-            font-size: 14px;
-            display: none;
+        .fav-btn {
+            font-size: 22px; color: #cbd5e1; padding: 4px 8px; margin-left: 8px;
+            cursor: pointer; user-select: none; transition: color 0.2s, transform 0.2s;
         }
+        .fav-btn:active { transform: scale(1.2); }
+        .fav-btn.active { color: #f59e0b; }
+
+        .no-results { padding: 24px; text-align: center; color: #64748b; font-size: 14px; display: none; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <h1>BSBs Menu Explorer</h1>
-        <input type="text" id="searchInput" class="search-box" placeholder="Search sauces or ingredients..." autocomplete="off">
+        <div class="controls">
+            <input type="text" id="searchInput" class="search-box" placeholder="Search sauces..." autocomplete="off">
+            <button id="favFilterBtn" class="fav-filter-btn" title="Toggle Favorites Only">★</button>
+        </div>
     </div>
 
     <div class="tree-container" id="treeRoot"></div>
-    <div class="no-results" id="noResults">No sauces found.</div>
+    <div class="no-results" id="noResults">No matching sauces found.</div>
 
     <script>
         const rawData = {
@@ -310,7 +270,7 @@
                 {"source": "GARLIC BUTTER", "target": "GAME-CHANGER"}, {"source": "RANCH", "target": "GAME-CHANGER"},
                 {"source": "GOLD", "target": "GOLD FIRE"}, {"source": "BOB'S SIGNATURE HOT", "target": "GOLD FIRE"},
                 {"source": "RANCH", "target": "HONEY BUNNY"}, {"source": "BOB'S SIGNATURE HOT", "target": "HONEY BUNNY"},
-                {"source": "JAMAICAN JERK", "target": "JAMAICAN FRANK"},
+                {"source": "JAMAICAN FRANK", "target": "HOT Jamaican Jerk"}, {"source": "JAMAICAN JERK", "target": "JAMAICAN FRANK"}, {"source": "BOB'S SIGNATURE HOT", "target": "JAMAICAN FRANK"},
                 {"source": "GARLIC BUTTER", "target": "JAMAICAN JERK"},
                 {"source": "BOB'S SIGNATURE HOT", "target": "LADY LUCK"}, {"source": "RANCH", "target": "LADY LUCK"},
                 {"source": "BOB'S HONEY MUSTARD", "target": "LAKE SHOW"},
@@ -331,7 +291,7 @@
                 {"source": "GOLD", "target": "PRIMETIME"}, {"source": "GARLIC BUTTER", "target": "PRIMETIME"}, {"source": "BOB'S SIGNATURE HOT", "target": "PRIMETIME"},
                 {"source": "GARLIC BUTTER", "target": "SHOWTIME"}, 
                 {"source": "MILD", "target": "STEEL CITY"}, {"source": "RANCH", "target": "STEEL CITY"},
-                {"source": "JAMAICAN JERK", "target": "SUPERFLY T.N.T."}, {"source": "RANCH", "target": "SUPERFLY T.N.T."},
+                {"source": "JAMAICAN JERK", "target": "SUPERFLY T.N.T."}, {"source": "BOB'S SIGNATURE HOT", "target": "SUPERFLY T.N.T."}, {"source": "RANCH", "target": "SUPERFLY T.N.T."},
                 {"source": "BOB'S SIGNATURE HOT", "target": "TALK OF BEAVER FALLS"},
                 {"source": "BOB'S HONEY MUSTARD", "target": "THREE RIVERS"}, {"source": "BBQ", "target": "THREE RIVERS"}, {"source": "RANCH", "target": "THREE RIVERS"},
                 {"source": "RANCH", "target": "THUNDERLIPS"}, 
@@ -348,19 +308,22 @@
         const nodesMap = new Map();
         const parentsMap = new Map();
 
+        // Local Storage State Management
+        let favorites = new Set(JSON.parse(localStorage.getItem('bsb_favorites') || '[]'));
+        let showFavoritesOnly = false;
+
         rawData.nodes.forEach(n => {
             nodesMap.set(n.id, n);
             parentsMap.set(n.id, []);
         });
 
         rawData.links.forEach(l => {
-            if(parentsMap.has(l.target)) {
-                parentsMap.get(l.target).push(l.source);
-            }
+            if(parentsMap.has(l.target)) { parentsMap.get(l.target).push(l.source); }
         });
 
         const rootEl = document.getElementById('treeRoot');
         const searchInput = document.getElementById('searchInput');
+        const favFilterBtn = document.getElementById('favFilterBtn');
         const noResults = document.getElementById('noResults');
 
         function createNodeHTML(nodeId, isIngredient = false) {
@@ -371,14 +334,16 @@
             const hasChildren = parents.length > 0;
             const badgeClass = isIngredient ? 'ingredient' : (node.group === 'Classic' ? 'classic' : 'signature');
             const badgeText = isIngredient ? 'Ingredient' : node.group;
+            const safeId = node.id.replace(/"/g, '&quot;');
+            const isFav = favorites.has(node.id);
 
             const chevronHTML = hasChildren 
                 ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>` 
                 : '';
 
             return `
-                <div class="node-item" data-id="${node.id}">
-                    <div class="node-content" onclick="toggleNode(this, '${node.id}')">
+                <div class="node-item" data-id="${safeId}">
+                    <div class="node-content" onclick="toggleNode(this)">
                         <div class="chevron ${hasChildren ? '' : 'empty'}">${chevronHTML}</div>
                         <div class="text-container">
                             <div style="display:flex; align-items:center;">
@@ -387,13 +352,31 @@
                             </div>
                             <span class="node-desc">${node.description}</span>
                         </div>
+                        <div class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFav(event, '${safeId}')">★</div>
                     </div>
                     <div class="node-children">
                         <div class="indent-line"></div>
-                        </div>
+                    </div>
                 </div>
             `;
         }
+
+        window.toggleFav = function(e, id) {
+            e.stopPropagation(); // Prevent tree expansion
+            const decodedId = id.replace(/&quot;/g, '"');
+            
+            if (favorites.has(decodedId)) {
+                favorites.delete(decodedId);
+                e.target.classList.remove('active');
+            } else {
+                favorites.add(decodedId);
+                e.target.classList.add('active');
+            }
+            localStorage.setItem('bsb_favorites', JSON.stringify([...favorites]));
+            
+            // Re-render if filter is active to remove non-favorites immediately
+            if (showFavoritesOnly) renderBaseTree(searchInput.value);
+        };
 
         function renderBaseTree(filterText = '') {
             rootEl.innerHTML = '';
@@ -401,12 +384,12 @@
             const filterLower = filterText.toLowerCase();
 
             rawData.nodes.forEach(node => {
-                // Determine search hit (checks ID and Description)
-                const isMatch = filterText === '' || 
-                                node.id.toLowerCase().includes(filterLower) || 
-                                node.description.toLowerCase().includes(filterLower);
-                
-                if (isMatch) {
+                const textMatch = filterText === '' || 
+                                  node.id.toLowerCase().includes(filterLower) || 
+                                  node.description.toLowerCase().includes(filterLower);
+                const favMatch = !showFavoritesOnly || favorites.has(node.id);
+
+                if (textMatch && favMatch) {
                     rootEl.insertAdjacentHTML('beforeend', createNodeHTML(node.id));
                     count++;
                 }
@@ -415,18 +398,20 @@
             noResults.style.display = count === 0 ? 'block' : 'none';
         }
 
-        window.toggleNode = function(element, nodeId) {
+        window.toggleNode = function(element) {
+            const nodeItem = element.closest('.node-item');
+            const nodeId = nodeItem.getAttribute('data-id').replace(/&quot;/g, '"');
             const childrenContainer = element.nextElementSibling;
             const chevron = element.querySelector('.chevron');
             const parents = parentsMap.get(nodeId);
 
-            if (parents.length === 0) return; // No ingredients to expand
+            if (!parents || parents.length === 0) return;
 
             if (childrenContainer.classList.contains('expanded')) {
                 childrenContainer.classList.remove('expanded');
                 chevron.classList.remove('rotated');
             } else {
-                if (childrenContainer.children.length <= 1) { // Only contains the indent line
+                if (childrenContainer.children.length <= 1) { 
                     let html = '';
                     parents.forEach(pId => { html += createNodeHTML(pId, true); });
                     childrenContainer.insertAdjacentHTML('beforeend', html);
@@ -438,6 +423,12 @@
 
         searchInput.addEventListener('input', (e) => {
             renderBaseTree(e.target.value);
+        });
+
+        favFilterBtn.addEventListener('click', () => {
+            showFavoritesOnly = !showFavoritesOnly;
+            favFilterBtn.classList.toggle('active', showFavoritesOnly);
+            renderBaseTree(searchInput.value);
         });
 
         // Init
