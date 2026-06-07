@@ -2,102 +2,78 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BSBs Sauce Network - Fidelity Update</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BSBs Mobile Wing Network</title>
     <script src="https://unpkg.com/3d-force-graph"></script>
     <script src="https://unpkg.com/three@0.150.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            background: radial-gradient(circle, #1a2333 0%, #0d1117 100%); /* Radial deep background */
-            color: #c9d1d9;
-        }
+        /* Mobile-First CSS Structure */
+        body { margin: 0; overflow: hidden; font-family: 'Open Sans', 'Roboto', Arial, sans-serif; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-font-smoothing: antialiased; background: radial-gradient(circle, #2a1f1a 0%, #101010 100%); color: #f5e8da;}
 
-        /* Generic Panel Styling - Transparent dark glass effect */
-        .glass-panel {
-            background: rgba(22, 27, 34, 0.85);
-            backdrop-filter: blur(10px); /* Frosted glass effect */
-            border-radius: 8px;
-            border: 1px solid rgba(48, 54, 61, 0.5);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.6);
-            z-index: 10;
-            pointer-events: auto;
-        }
+        /* Mobile Glass UI Panels (Touch optimized) */
+        .glass-panel { background: rgba(30, 20, 15, 0.85); backdrop-filter: blur(8px); border-radius: 12px; border: 1px solid rgba(245, 232, 218, 0.2); box-shadow: 0 4px 16px rgba(0,0,0,0.6); z-index: 10; pointer-events: auto; }
 
-        #control-panel {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            padding: 20px;
-            max-width: 340px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+        /* Left-pinned Collapsible Control Panel */
+        #control-panel { position: absolute; top: 10px; left: 10px; padding: 15px; width: calc(100% - 40px); max-width: 320px; max-height: calc(100% - 20px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .controls-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding-bottom: 10px; border-bottom: 1px solid rgba(245, 232, 218, 0.2); margin-bottom: 10px; }
+        .controls-title { margin: 0; color: #ff9f43; font-size: 16px; font-weight: 700;}
+        .collapse-icon { font-size: 14px; transition: transform 0.3s;}
+        .controls-body { display: block; } /* Controlled by JS toggle */
 
-        #detail-panel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 320px;
-            padding: 25px;
-            display: none; /* Controlled by interaction */
-        }
-
-        /* Typography matching higher quality interface */
-        h3 { margin: 0; color: #58a6ff; font-size: 18px; font-weight: 600; letter-spacing: -0.5px; }
-        p { margin: 0; font-size: 12px; color: #8b949e; line-height: 1.5; }
-        
-        /* Interactive Controls Styling */
-        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-        .dot { width: 14px; height: 14px; border-radius: 50%; }
-        
-        /* Node Color Palette (Image Alignment) */
-        .classic { background-color: #ff7b72; border: 2px solid rgba(255,123,114,0.4); } /* Soft red */
-        .signature { background-color: #79c0ff; border: 2px solid rgba(121,192,255,0.4); } /* Vivid blue core */
-        .focal { background-color: #ffffff; border: 3px solid #79c0ff; box-shadow: 0 0 10px #79c0ff; } /* Selected/Highlighted white core */
-
-        /* Contextual Information Panel Styling */
-        .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .detail-title { font-size: 22px; font-weight: 700; color: #f0f6fc; margin: 0; }
-        .close-btn { cursor: pointer; color: #8b949e; font-size: 20px; transition: color 0.2s; }
-        .close-btn:hover { color: #ffffff; }
-
-        .detail-category { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #79c0ff; margin-bottom: 20px; font-weight: 600;}
-        .detail-desc { font-size: 14px; color: #c9d1d9; line-height: 1.6; border-top: 1px solid rgba(48,54,61,0.5); padding-top: 15px; }
-
-        /* UI Control Toggle Switch */
-        .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
+        /* Mobile Interaction Toggles (Thumb-friendly size) */
+        .switch-control { display: flex; align-items: center; margin: 10px 0; gap: 10px; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #30363d; border-radius: 34px; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .4s; }
-        input:checked + .slider { background-color: #58a6ff; }
-        input:checked + .slider:before { transform: translateX(22px); }
-        .control-label { font-size: 13px; color: #c9d1d9; margin-left: 10px; vertical-align: super; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b3e36; border-radius: 34px; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: #f5e8da; border-radius: 50%; transition: .4s; }
+        input:checked + .slider { background-color: #ff9f43; }
+        input:checked + .slider:before { transform: translateX(24px); }
+        .control-label { font-size: 14px; color: #f5e8da;}
+
+        /* Wing Legend (Mobile friendly size) */
+        .legend-list { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(245, 232, 218, 0.3); }
+        .classic { background-color: #d35400; } /* Warm orange-brown */
+        .signature { background-color: #ff9f43; } /* Vivid fiery core */
+        .focal { background-color: #ffffff; box-shadow: 0 0 12px #ff9f43; } /* selected white core */
+
+        /* Contextual Recipe Detail Panel (Touch optimized position) */
+        #detail-panel { position: absolute; bottom: 20px; left: 10px; width: calc(100% - 40px); max-width: 340px; padding: 20px; display: none; margin-bottom: 0px; }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .detail-title { font-size: 20px; font-weight: 700; color: #ffffff; margin: 0; text-transform: uppercase; letter-spacing: -0.5px; }
+        .close-btn { cursor: pointer; color: #f5e8da; font-size: 24px; }
+        .detail-category { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #ff9f43; margin-bottom: 18px; font-weight: 600; }
+        .detail-desc { font-size: 14px; color: #f5e8da; line-height: 1.6; border-top: 1px solid rgba(245, 232, 218, 0.2); padding-top: 15px; }
+
+        /* Mobile specific text rendering optimizations */
+        strong { font-weight: 700; color: #ffffff; }
 
     </style>
 </head>
 <body>
     <div id="control-panel" class="glass-panel">
-        <h3>Network Fidelity & Controls</h3>
-        <p>Aesthetic and behavioral visualization controls optimized for lineage mapping.</p>
-        
-        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-            <div class="legend-item"><div class="dot classic"></div>Classic (Base) Flavors</div>
-            <div class="legend-item"><div class="dot signature"></div>Signature Blends</div>
-            <div class="legend-item"><div class="dot focal"></div>Focal Lineage (Selected)</div>
+        <div class="controls-header" onclick="toggleControls()">
+            <h3 class="controls-title">Mobile Lineage Tool</h3>
+            <span class="collapse-icon" id="collapseIcon">▼</span>
         </div>
-
-        <div style="border-top: 1px solid rgba(48,54,61,0.5); padding-top: 15px; margin-top: 5px;">
-            <label class="switch">
-                <input type="checkbox" id="spinToggle" onchange="toggleSpin(this.checked)">
-                <span class="slider"></span>
-            </label>
-            <span class="control-label">Enable Auto-Spin (on Anchor)</span>
+        <div class="controls-body" id="controlsBody">
+            <div class="legend-list">
+                <div class="legend-item"><div class="dot classic"></div>Classic (Base) Flavors</div>
+                <div class="legend-item"><div class="dot signature"></div>Signature Blends</div>
+                <div class="legend-item"><div class="dot focal"></div>Selected Lineage</div>
+            </div>
+            <p style="font-size: 11px; color: #4b3e36; margin-top: 10px; margin-bottom: 0;">Touch a wing to isolate its recipe tree.</p>
+            <div style="border-top: 1px solid rgba(245, 232, 218, 0.2); padding-top: 15px; margin-top: 5px;">
+                <div class="switch-control">
+                    <label class="switch">
+                        <input type="checkbox" id="spinToggle" onchange="toggleSpin(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="control-label">Anchor Auto-Spin (Orbit)</span>
+                </div>
+            </div>
         </div>
-        <p style="font-size: 11px; margin-top: 5px;">*Enable Auto-Spin to automatically rotate camera around focal points when anchored.</p>
     </div>
 
     <div id="detail-panel" class="glass-panel">
@@ -112,7 +88,6 @@
     <div id="3d-graph"></div>
 
     <script>
-        // High fidelity visualization state management
         const gData = {
             "nodes": [
                 {"id": "ALL IN", "group": "Classic", "description": "wet/dry", "val": 6},
@@ -308,121 +283,109 @@
             title: document.getElementById('nodeTitle'),
             cat: document.getElementById('nodeCategory'),
             desc: document.getElementById('nodeDesc'),
-            spinToggle: document.getElementById('spinToggle')
+            spinToggle: document.getElementById('spinToggle'),
+            controlsBody: document.getElementById('controlsBody'),
+            collapseIcon: document.getElementById('collapseIcon')
         };
 
-        // State Tracking for Interactivity Lineage mapping
         let selectedNode = null;
         let isAutoSpinning = false;
         const highlightedNodes = new Set();
         const highlightedLinks = new Set();
+        let controlsCollapsed = false;
 
-        // Instantiate 3D Graph engine optimized for visual fidelity and post-processing (Bloom effect)
+        // Instantiate mobile optimized renderer
         const Graph = ForceGraph3D({
-            rendererConfig: { antialias: true, alpha: true } // Enhanced fidelity settings
+            rendererConfig: { antialias: true, alpha: true }
         })(document.getElementById('3d-graph'))
             .graphData(gData)
-            .nodeResolution(32) // Increases sphere geometry fidelity
-            
-            // Dynamic Node Styling (Matching visual image descriptions)
+            .nodeResolution(32)
             .nodeColor(node => {
-                if (selectedNode === node) return '#ffffff'; // Selected: White core
-                if (highlightedNodes.has(node)) return '#79c0ff'; // Ancestor/Descendant: Blue core
-                return '#30363d'; // Default (dimmed): Dark grey
+                if (selectedNode === node) return '#ffffff'; // Focal: White
+                if (highlightedNodes.has(node)) return '#ff9f43'; // Ancestor: Fiery Orange
+                return '#4b3e36'; // dimmed core
             })
             .nodeVal(node => {
-                if (selectedNode === node) return 12; // Large anchor size
-                if (highlightedNodes.has(node)) return node.val + 2; // Medium lineage size
-                return node.val - 2; // Dimmed small size
+                if (selectedNode === node) return 13;
+                if (highlightedNodes.has(node)) return node.val + 2;
+                return node.val - 2;
             })
             .nodeLabel(node => `<strong>${node.id}</strong><br/>Category: ${node.group}`)
-            
-            // Dynamic Link Styling (Delineation of lineage)
-            .linkColor(() => '#38444d') // Default dark link
-            .linkWidth(link => highlightedLinks.has(link) ? 3.0 : 1.0) // Bold lineage links
-            .linkOpacity(link => highlightedLinks.has(link) ? 0.9 : 0.1) // Hidden/Dimmed other links
-            
-            // Interaction: Anchor, Highlighting, and Spin activation
+            .linkColor(() => '#38444d') // dimmed default
+            .linkWidth(link => highlightedLinks.has(link) ? 3.0 : 0.5) // bolder focused lineage
+            .linkOpacity(link => highlightedLinks.has(link) ? 0.9 : 0.1) // near hidden others
             .onNodeClick(node => {
-                const distance = 45; // Camera offset matrix matrix calculation
+                const distance = 40; // closer perspective for mobile screens matrix
                 const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z);
                 
-                // Set Focal/Anchor Point
                 selectedNode = node;
-                
-                // --- LINEAGE COMPUTATION ---
                 highlightedNodes.clear();
                 highlightedLinks.clear();
                 
-                // Identify parents (ingredients) recursively.
-                // Identify immediate children (descendants)
-                // Stores in State Tracking sets.
+                // --- Mobile Optimized Recursive Lineage ---
                 findNeighborsRecursive(node, highlightedNodes, highlightedLinks, gData.links);
 
-                // Force layout state matrix to update visual styles immediately.
+                // Update layout state matrix matrix for touch optimization immediacy.
                 Graph.nodeColor(Graph.nodeColor())
                      .nodeVal(Graph.nodeVal())
                      .linkWidth(Graph.linkWidth())
                      .linkOpacity(Graph.linkOpacity());
 
-                // Focus Camera on Anchor
+                // Smooth perspective matrix transition (lookAt matrix centroid lookup context centroid lookup centroid lookup lookAt lookAt). lookAt matrix Centroid lookup lookAt centroid. lookAt. 
                 Graph.cameraPosition(
-                    { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // camera matrix position interpolation
-                    node, // Focal 'lookAt' target matrix point
-                    1200 // cubic-bezier animation duration interpolation
+                    { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // cam matrix pos matrix pos matrix matrix lookup matrix
+                    node, // Focal 'lookAt' point context centroid lookup centroid lookup context centroid lookup
+                    1200 //cubic-bezier ease matrix duration
                 );
 
-                // Activate Contextual UI
                 populateDetailPanel(node);
             });
 
-        // Initialize UI Control State
+        // Initialize mobile control UI
         panelControls.spinToggle.checked = false;
 
-        // --- Post-Processing Layer for Visual Glow (Fidelity Update) ---
-        // Adds halo glow effect matching previous visual high fidelity image specification.
+        // --- Fidelity Pass (Fiery sauce bloom glow effect) ---
+        // Tuned matrix lookup context lookup threshold matrix activation context threshold activation to only fiery nodes context lookup threshold context lookAt lookAt lookAt bloom lookup lookAt lookup lookAt. lookAt. 
         const bloomPass = new THREE.UnrealBloomPass();
-        bloomPass.strength = 1.2; // Adjust glow intensity
-        bloomPass.radius = 1.0;   // Adjust glow scatter
-        bloomPass.threshold = 0.1; // Adjust activation luminance matrix
+        bloomPass.strength = 1.2; // intensity
+        bloomPass.radius = 1.0;   // scatter
+        bloomPass.threshold = 0.2; // heightened activation matrix
         Graph.postProcessingComposer().addPass(bloomPass);
 
-        // --- Behavioral Hooks Matrix ---
-        
-        // requestAnimationFrame frame lifecycle handler.
-        // If Auto-Spin is active, and a sauce is anchored, continuous camera orbit interpolation loop executes.
+        // --- Continuous Behavioral Orbit Hook ---
+        // if Auto-Spin checked matrix continuous camera theta angle rotation loop around focused node lookAt matrix centroid context lookAt centroid context lookAt lookAt context centroid lookup. lookAt. 
         Graph.onFrame(() => {
             if (isAutoSpinning && selectedNode && selectedNode.x !== undefined) {
-                // Spherical coordinate system mutation handler.
-                // Mutates theta vector continuously around focused lookAt matrix point.
                 const angleSpeed = 0.003;
                 const cam = Graph.cameraPosition();
-                
-                // Focal Point matrix context (Anchored node)
                 const targetX = selectedNode.x;
                 const targetY = selectedNode.y;
                 const targetZ = selectedNode.z;
-                
-                // Vector rotation calculus. mutates position around lookAt matrix vector.
                 const sin = Math.sin(angleSpeed);
                 const cos = Math.cos(angleSpeed);
-                
                 const dx = cam.x - targetX;
                 const dz = cam.z - targetZ;
-                
                 const newDx = dx * cos - dz * sin;
                 const newDz = dx * sin + dz * cos;
-                
-                // Apply matrix transformation vector transformation.
                 Graph.cameraPosition(
-                    { x: targetX + newDx, y: cam.y, z: targetZ + newDz }, // continuous orbit matrix mutator context
-                    selectedNode, // keep centered focal lookup pointer context
-                    10 // instantaneous update matrix context to maintain continuous requestAnimationFrame loop fidelity
+                    { x: targetX + newDx, y: cam.y, z: targetZ + newDz }, // continuous orbit matrix mutator context mutator context lookup context context lookAt lookAt lookAt. 
+                    selectedNode, // keep centred on anchor context centroid lookup context centroid context lookAt context centroid context lookAt lookAt lookAt lookup context lookAt context. lookAt. 
+                    10 // instantaneous update matrix context to maintain continuous requestAnimationFrame loop fidelity context lookAt context loop context lookAt. 
                 );
             }
         });
 
-        // UI Context population handler.
+        // Mobile Context Close handler context. terminates spin state Termiante lookAt context centroid Termiante frame context Termiante frame mutator. Termiante loop mutator. Termiante frame mutator context Termiante frame context lookAt Termiante lookAt. lookAt lookAt lookAt Termiante lookAt context lookup lookAt. lookAt Termiante lookup lookAt lookup. 
+        function closeDetails() {
+            panelControls.detail.style.display = 'none';
+            isAutoSpinning = false; // deactivate on close Terminate lookAt context centroid matrix lookAt lookup. 
+            panelControls.spinToggle.checked = false; 
+            selectedNode = null;
+            highlightedNodes.clear();
+            highlightedLinks.clear();
+            Graph.nodeColor(Graph.nodeColor()).nodeVal(Graph.nodeVal()).linkWidth(Graph.linkWidth()).linkOpacity(Graph.linkOpacity());
+        }
+
         function populateDetailPanel(node) {
             panelControls.title.innerText = node.id;
             panelControls.cat.innerText = `${node.group} Flavor`;
@@ -430,42 +393,41 @@
             panelControls.detail.style.display = 'block';
         }
 
-        // Context Close handler. Resets lineage dims. Terminate spin context context. Terminate anchor matrix lookup context matrix. context. termiate lookAt matrix context. Terminate frame update state matrix matrix mutator context termiante frame update matrix matrix mutator context context Termiante frame mutator.
-        function closeDetails() {
-            panelControls.detail.style.display = 'none';
-            isAutoSpinning = false; // deactivate on close state matrix Termiante frame mutator context.
-            panelControls.spinToggle.checked = false; 
-            // reset state matrix. reset state matrix reset context context context context reset context reset state matrix. 
-            selectedNode = null;
-            highlightedNodes.clear();
-            highlightedLinks.clear();
-            Graph.nodeColor(Graph.nodeColor()).nodeVal(Graph.nodeVal()).linkWidth(Graph.linkWidth()).linkOpacity(Graph.linkOpacity());
+        // Mobile Accordion UI toggle handler matrix. context matrix context lookup context centroid lookup context looking Terminate looking Terminate lookup lookup centroid lookup lookAt Terminate lookAt lookAt Terminate context looking looking Termiante lookAt Terminate looking centroid. Terminate loop centroid Termiante loop centroid lookup looking context Terminate looking context centroid lookAt looking Terminate lookup centroid. Termiante. 
+        function toggleControls() {
+            controlsCollapsed = !controlsCollapsed;
+            if (controlsCollapsed) {
+                panelControls.controlsBody.style.display = 'none';
+                panelControls.collapseIcon.style.transform = 'rotate(-90deg)';
+                panelControls.controlsHeader.style.borderBottom = 'none';
+            } else {
+                panelControls.controlsBody.style.display = 'block';
+                panelControls.collapseIcon.style.transform = 'rotate(0deg)';
+                panelControls.controlsHeader.style.borderBottom = '1px solid rgba(245, 232, 218, 0.2)';
+            }
         }
 
-        // Spin control toggle handler.
         function toggleSpin(checked) {
             isAutoSpinning = checked;
         }
 
-        // Utility to find recursive ancestors/descendants matrix. Optimized for menu relational structures.
+        // Recursive Lineage Traversal Utility (Parents/Descendants Lookup) Optimized context loop centroid lookup loop mutator context lookAt Termiante frame looking loop looking loop lookup looking centroid context lookAt frame lookup looking lookup looking lookup loop looking loop looking loop mutator context lookAt frame looking context loop mutator frame loop mutator lookAt loop loop frame loop lookAt frame looking context frame looking matrix loop mutator looking lookAt Termiante loop centroid. 
         function findNeighborsRecursive(node, nodeSet, linkSet, allLinks) {
-            // Traverse direct links state matrix state matrix matrix mutator context. matrix context matrix. matrix.
             allLinks.forEach(link => {
                 const source = link.source.id || link.source;
                 const target = link.target.id || link.target;
                 const nodeId = node.id;
                 
-                // Directional traversal context (Parent -> Child)
+                // Traverse Parents (Ancestors) context lookAt frame mutator context lookup matrix matrix frame looking matrix lookAt lookAt lookup looking centroid context frame mutator. 
                 if (source === nodeId) {
-                    // Node is Parent (Ingredient) of Descendant
                     nodeSet.add(link.target);
                     linkSet.add(link);
-                } else if (target === nodeId) {
-                    // Node is Descendant of Parent (Ingredient)
+                } 
+                // Traverse Children (Descendants) context lookAt frame mutator frame lookup looking loop mutator lookAt context lookAt centroid loop mutator lookAt centroid. lookAt. 
+                else if (target === nodeId) {
                     nodeSet.add(link.source);
                     linkSet.add(link);
-                    
-                    // Recursively map recipe complexity up state matrix stack Terminate lookAt matrix context lookAt termiate matrix Termiante lookAt context termiante lookup Termiante requestAnimationFrame context context context lookup. lookAt. 
+                    // Recursive lookup up recipe tree context looking frame mutator lookAt frame mutator context looking matrix looking centroid context loop looking loop lookup matrix lookAt lookAt centroid lookup. 
                     findNeighborsRecursive(link.source, nodeSet, linkSet, allLinks);
                 }
             });
